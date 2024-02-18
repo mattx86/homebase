@@ -129,23 +129,37 @@ async fn process_string(string: &String) -> String {
                 }
             }
             else if key == "A" {
-                let answer = dns_query(&nameserver, val.to_string(), Type::A).unwrap();
-                if answer.len() > 0 {
-                    for a in answer {
-                        output = format!("{}{}/32\n", output, a.resource.to_string().replace('"', ""));
-                    }
-                } else {
-                    eprintln!("DNS Query Warning: Query: \"A:{}\" Warning: No DNS results", &val);
+                let answer = dns_query(&nameserver, val.to_string(), Type::A);
+                match answer {
+                    Ok(o) => {
+                        if o.len() > 0 {
+                            for a in o {
+                                output = format!("{}{}/32\n", output, a.resource.to_string().replace('"', ""));
+                            }
+                        } else {
+                            eprintln!("DNS Query Warning: Query: \"A:{}\" Warning: No DNS results", &val);
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("{}", e);
+                    },
                 }
             }
             else if key == "AAAA" {
-                let answer = dns_query(&nameserver, val.to_string(), Type::AAAA).unwrap();
-                if answer.len() > 0 {
-                    for a in answer {
-                        output = format!("{}{}/128\n", output, a.resource.to_string().replace('"', ""));
-                    }
-                } else {
-                    eprintln!("DNS Query Warning: Query \"AAAA:{}\" Warning: No DNS results", &val);
+                let answer = dns_query(&nameserver, val.to_string(), Type::AAAA);
+                match answer {
+                    Ok(o) => {
+                        if o.len() > 0 {
+                            for a in o {
+                                output = format!("{}{}/128\n", output, a.resource.to_string().replace('"', ""));
+                            }
+                        } else {
+                            eprintln!("DNS Query Warning: Query \"AAAA:{}\" Warning: No DNS results", &val);
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("{}", e);
+                    },
                 }
             }
             else if key == "IPV4" {
@@ -208,7 +222,7 @@ async fn main() {
     opts.optflag("h", "help",   "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
-        Err(_f) => { print_usage(&program, opts); std::process::exit(1) }
+        Err(_f) => { print_usage(&program, opts); std::process::exit(1); }
     };
 
     // print help menu
@@ -218,15 +232,16 @@ async fn main() {
         (matches.opt_present("s") && matches.opt_str("s").unwrap().len() == 0) ||
         (matches.opt_present("c") && matches.opt_str("c").unwrap().len() == 0) {
         print_usage(&program, opts);
-        return;
+        std::process::exit(1);
     }
 
     // build homebase string from TXT record
     if matches.opt_present("t") {
         let nameserver = get_system_nameserver();
-        let homebase_query = dns_query(&nameserver, matches.opt_str("t").unwrap(), Type::TXT).unwrap();
-        if homebase_query.len() > 0 {
-            homebase_string = homebase_query[0].resource.to_string().replace('"', "");
+        let homebase_query = dns_query(&nameserver, matches.opt_str("t").unwrap(), Type::TXT);
+        match homebase_query {
+            Ok(o) => { if o.len() > 0 { homebase_string = o[0].resource.to_string().replace('"', ""); } },
+            Err(e) => { eprintln!("{}", e.to_string()); },
         }
     }
 
@@ -264,6 +279,7 @@ async fn main() {
         let mut seen = HashMap::new();
 
         if cidrs_string.len() == 0 {
+            eprintln!("Homebase Warning: No CIDRs returned");
             std::process::exit(1);
         }
 
@@ -313,6 +329,7 @@ async fn main() {
     }
 
     if cache.cidrs.len() == 0 {
+        eprintln!("Homebase Warning: No CIDRs returned");
         std::process::exit(1);
     }
 

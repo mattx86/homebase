@@ -2,7 +2,7 @@
 
 With homebase, you can turn a list of Regional Internet Registry (RIR) Organization IDs (Org IDs), Autonomous System (AS) Numbers, A and AAAA DNS records into IPv4 and IPv6 CIDR lists, for use in routers, firewalls, servers, and more.
 
-Its intended use is to establish a "homebase" (of CIDRs) that are allowed access to particular resources.  It can also be used to block access from certain CIDRs.
+Its intended use is to establish a "homebase" (of CIDRs) that are allowed access to particular resources.  It can also be used to block access from certain CIDRs.  It can even be used to replace or augment certain Dynamic DNS use cases.
 
 ## How to build
 

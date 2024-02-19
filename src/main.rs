@@ -59,8 +59,8 @@ async fn rdap_query(s: String) -> Result<String, String> {
     }
 }
 
-fn dns_query(nameserver: &String, query_hostname: String, query_type: rustdns::Type) -> Result<Vec<Record>, String> {
-    let nameserver_and_port = format!("{}:53", nameserver);
+fn dns_query(nameservers: &Vec<String>, query_hostname: String, query_type: rustdns::Type) -> Result<Vec<Record>, String> {
+    let mut result: Result<Vec<Record>, String> = Ok::<Vec<Record>, String>(vec![]);
     let mut m = Message::default();
     m.add_question(&query_hostname, query_type, Class::Internet);
     m.add_extension(Extension {
@@ -70,22 +70,79 @@ fn dns_query(nameserver: &String, query_hostname: String, query_type: rustdns::T
 
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| format!("DNS Bind Error: {}", e.to_string()))?;
     socket.set_read_timeout(Some(Duration::new(5, 0))).map_err(|e| format!("DNS Set Read Timeout Error: {}", e.to_string()))?;
-    socket.connect(nameserver_and_port).map_err(|e| format!("DNS Connect Error: {}", e.to_string()))?;
 
-    let question = m.to_vec().map_err(|e| format!("DNS Error Converting Message to Vector: {}", e.to_string()))?;
+    for i in 0..nameservers.len() {
+        let nameserver_and_port = format!("{}:53", nameservers[i]);
 
-    socket.send(&question).map_err(|e| format!("DNS Error Sending Query: {}", e.to_string()))?;
+        let _ = match socket.connect(nameserver_and_port) {
+            Ok(_) => { Ok::<Vec<Record>, String>(vec![]) },
+            Err(e) => {
+                if i < (nameservers.len()-1) {
+                    continue;
+                } else {
+                    result = Err::<Vec<Record>, String>(format!("DNS Connect Error: {}", e.to_string()));
+                    break;
+                }
+            },
+        };
 
-    let mut resp = [0; 4096];
-    let len = socket.recv(&mut resp).map_err(|e| format!("DNS Error Receiving Response: {}", e.to_string()))?;
+        let question = m.to_vec();
+        let _ = match question {
+            Ok(_) => { Ok::<Vec<Record>, String>(vec![]) },
+            Err(e) => {
+                if i < (nameservers.len()-1) {
+                    continue;
+                } else {
+                    result = Err::<Vec<Record>, String>(format!("DNS Error Converting Message to Vector: {}", e.to_string()));
+                    break;
+                }
+            }
+        };
 
-    let answer = Message::from_slice(&resp[0..len]).map_err(|e| format!("DNS Error Getting Message From Slice: {}", e.to_string()))?;
+        let _ = match socket.send(&question.unwrap()) {
+            Ok(_) => { Ok::<Vec<Record>, String>(vec![]) },
+            Err(e) => {
+                if i < (nameservers.len()-1) {
+                    continue;
+                } else {
+                    result = Err::<Vec<Record>, String>(format!("DNS Error Sending Query: {}", e.to_string()));
+                    break;
+                }
+            }
+        };
 
-    Ok(answer.answers)
+        let mut resp = [0; 4096];
+        let len = socket.recv(&mut resp);
+        let _ = match len {
+            Ok(_) => { Ok::<Vec<Record>, String>(vec![]) },
+            Err(e) => {
+                if i < (nameservers.len()-1) {
+                    continue;
+                } else {
+                    result = Err::<Vec<Record>, String>(format!("DNS Error Receiving Response: {}", e.to_string()));
+                    break;
+                }
+            }
+        };
+
+        result = match Message::from_slice(&resp[0..len.unwrap()]) {
+            Ok(o) => { Ok(o.answers) },
+            Err(e) => {
+                if i < (nameservers.len()-1) {
+                    continue;
+                } else {
+                    Err::<Vec<Record>, String>(format!("DNS Error Getting Message from Slice: {}", e.to_string()))
+                }
+            }
+        };
+    }
+
+    result
 }
 
-fn get_system_nameserver() -> String {
-    let mut nameserver = String::new();
+fn get_system_nameservers() -> Vec<String> {
+    let mut nameserver: Vec<String>;
+    let mut nameservers: Vec<String> = vec![];
     let file = std::fs::read_to_string("/etc/resolv.conf").expect("Error reading file: /etc/resolv.conf");
     let lines = file.lines();
     for line in lines {
@@ -93,23 +150,23 @@ fn get_system_nameserver() -> String {
             continue;
         }
         if line.split(" ").nth(0) == Some("nameserver") {
-            nameserver = line.split(" ").nth(1).unwrap().to_string();
-            break;
+            nameserver = vec![line.split(" ").nth(1).unwrap().to_string()];
+            nameservers.append(&mut nameserver);
         }
     }
 
-    nameserver
+    nameservers
 }
 
 async fn process_string(string: &String) -> String {
-    let nameserver = get_system_nameserver();
+    let nameservers = get_system_nameservers();
     let mut output = String::new();
     let mut rdap_result: Result<String, String>;
 
     for piece in string.trim().split(" ") {
         if piece.split(":").count() >= 2 {
             let key = piece.split(":").nth(0).unwrap().to_uppercase();
-            let val = piece.split(":").nth(1).unwrap().to_uppercase();
+            let mut val = piece.split(":").nth(1).unwrap().to_uppercase();
             if key == "ORG" {
                 rdap_result = rdap_query(format!("ORG:{}", val)).await;
                 match rdap_result {
@@ -129,7 +186,8 @@ async fn process_string(string: &String) -> String {
                 }
             }
             else if key == "A" {
-                let answer = dns_query(&nameserver, val.to_string(), Type::A);
+                val = val.to_lowercase();
+                let answer = dns_query(&nameservers, val.to_string(), Type::A);
                 match answer {
                     Ok(o) => {
                         if o.len() > 0 {
@@ -146,7 +204,8 @@ async fn process_string(string: &String) -> String {
                 }
             }
             else if key == "AAAA" {
-                let answer = dns_query(&nameserver, val.to_string(), Type::AAAA);
+                val = val.to_lowercase();
+                let answer = dns_query(&nameservers, val.to_string(), Type::AAAA);
                 match answer {
                     Ok(o) => {
                         if o.len() > 0 {
@@ -237,8 +296,8 @@ async fn main() {
 
     // build homebase string from TXT record
     if matches.opt_present("t") {
-        let nameserver = get_system_nameserver();
-        let homebase_query = dns_query(&nameserver, matches.opt_str("t").unwrap(), Type::TXT);
+        let nameservers = get_system_nameservers();
+        let homebase_query = dns_query(&nameservers, matches.opt_str("t").unwrap(), Type::TXT);
         match homebase_query {
             Ok(o) => { if o.len() > 0 { homebase_string = o[0].resource.to_string().replace('"', ""); } },
             Err(e) => { eprintln!("{}", e.to_string()); },

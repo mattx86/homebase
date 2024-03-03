@@ -20,6 +20,8 @@ use std::io::Write;
 use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
 
+const VERSION: &str = "v1.0.0";
+
 #[async_recursion]
 async fn rdap_query(s: String) -> Result<String, String> {
     let rdap_config = icann_rdap_client::ClientConfig::default();
@@ -249,7 +251,15 @@ struct HomebaseCache {
     cidrs: Vec<IpNetwork>,
 }
 
+fn print_version() {
+    println!("homebase {}", VERSION);
+    println!("Copyright 2024, Matt Smith");
+}
+
 fn print_usage(program: &str, opts: Options) {
+    print_version();
+    println!("");
+
     let brief = format!("Usage: {} [-t, --txt HOST] [-s, --string STRING] [-c, --cache FILE] [-z46]", program);
     print!("{}", opts.usage(&brief));
 }
@@ -278,11 +288,18 @@ async fn main() {
     opts.optflag("z", "sort",   "sort output");
     opts.optflag("4", "ipv4",   "output IPv4 CIDRs only");
     opts.optflag("6", "ipv6",   "output IPv6 CIDRs only");
+    opts.optflag("v", "version","print homebase version");
     opts.optflag("h", "help",   "print this help menu");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
         Err(_f) => { print_usage(&program, opts); std::process::exit(1); }
     };
+
+    // print homebase version
+    if matches.opt_present("v") {
+        print_version();
+        std::process::exit(0);
+    }
 
     // print help menu
     if matches.opt_present("h") || args.len() == 1 ||

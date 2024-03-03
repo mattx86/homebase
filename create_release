@@ -1,0 +1,14 @@
+#!/bin/bash
+
+VERSION=$(grep 'const VERSION' src/main.rs | egrep -o '"[^"]+"' | tr -d '"')
+RELEASE_DIR=homebase-$VERSION
+RELEASE_TAR=$RELEASE_DIR.tar.gz
+
+/bin/rm -rf $RELEASE_DIR
+cargo build -r && \
+  mkdir $RELEASE_DIR && \
+  cp LICENSE $RELEASE_DIR/ && \
+  cp README.md $RELEASE_DIR/ && \
+  cp target/release/homebase $RELEASE_DIR/ && \
+  tar -czvf $RELEASE_TAR $RELEASE_DIR
+

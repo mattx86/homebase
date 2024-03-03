@@ -1,7 +1,9 @@
 #!/bin/bash
 
 VERSION=$(grep 'const VERSION' src/main.rs | egrep -o '"[^"]+"' | tr -d '"')
-RELEASE_DIR=homebase-$VERSION
+RELEASE_ARCH=$(uname -m)
+RELEASE_OS=$(uname -o | egrep -o 'Linux' | tr '[A-Z]' '[a-z]')
+RELEASE_DIR=homebase-$VERSION-$RELEASE_ARCH-$RELEASE_OS
 RELEASE_TAR=$RELEASE_DIR.tar.gz
 
 /bin/rm -rf $RELEASE_DIR

@@ -12,5 +12,5 @@ cargo build -r && \
   cp LICENSE $RELEASE_DIR/ && \
   cp README.md $RELEASE_DIR/ && \
   cp target/release/homebase $RELEASE_DIR/ && \
-  tar -czvf $RELEASE_TAR $RELEASE_DIR
+  tar -czv --owner=0 --group=0 -f $RELEASE_TAR $RELEASE_DIR
 

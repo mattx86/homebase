@@ -6,13 +6,31 @@ Its intended use is to establish a "homebase" (of CIDRs) that are allowed access
 
 ## How to build
 
-Homebase can be built with cargo:
+First, install rust and cargo via rustup.  Get it here:
+https://rustup.rs/
+
+Build homebase via cargo:
 
 `cargo build -r`
+
+The homebase binary will be placed at `target/release/homebase`.
+
+To build via cargo and create a release package:
+
+`./create_release.sh` (currently only written with Linux in mind)
+
+## How to install
+
+Homebase can be installed from the source repo or a release package by running:
+
+`./install.sh`
 
 ## How to use
 
 ```
+homebase v1.0.0
+Copyright 2024, Matt Smith
+
 $ ./homebase
 Usage: ./homebase [-t, --txt HOST] [-s, --string STRING] [-c, --cache FILE] [-z46]
 
@@ -23,6 +41,7 @@ Options:
     -z, --sort          sort output
     -4, --ipv4          output IPv4 CIDRs only
     -6, --ipv6          output IPv6 CIDRs only
+    -v, --version       print homebase version
     -h, --help          print this help menu
 ```
 
@@ -52,6 +71,8 @@ Search for ORG IDs and AS Numbers via [ARIN Whois](https://search.arin.net/rdap/
 `-4, --ipv4`: Output IPv4 CIDRs only.
 
 `-6, --ipv6`: Output IPv6 CIDRs only.
+
+`-v, --version`: Print homebase version.
 
 `-h, --help`: Print help menu.
 

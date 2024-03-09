@@ -96,3 +96,5 @@ Use the homebase string `AS:1`, output only IPv6 CIDRs, and sort the output:
 ```
 $ ./homebase -s "AS:1" -6 -z
 ```
+
+See the included `examples` directory for example scripts.

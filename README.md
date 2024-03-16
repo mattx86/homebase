@@ -31,7 +31,6 @@ Homebase can be installed from the source repo or a release package by running:
 homebase v1.0.0
 Copyright 2024, Matt Smith
 
-$ ./homebase
 Usage: ./homebase [-t, --txt HOST] [-s, --string STRING] [-c, --cache FILE] [-z46]
 
 Options:
